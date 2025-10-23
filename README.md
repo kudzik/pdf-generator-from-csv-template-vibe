@@ -7,6 +7,8 @@ Program do automatycznego generowania notatnika PDF z tematów wczytanych z plik
 - **Automatyczne generowanie PDF** z tematów z pliku CSV
 - **Spójne nagłówki i stopki** na każdej stronie
 - **Elastyczna liczba stron** dla każdego tematu
+- **Linie pomocnicze do notowania** - regularne linie co 7mm na każdej stronie
+- **Linie oddzielające** - linie pod nagłówkiem i nad stopką
 - **Obsługa polskich znaków** (UTF-8)
 - **Szczegółowe komunikaty** o postępie generowania
 - **Obsługa błędów** z informatywnymi komunikatami
@@ -73,13 +75,19 @@ python main.py
 
 ### Programowe użycie:
 ```python
-from main import load_topics_from_csv, generate_notebook_pdf
+from main import load_topics_from_csv, generate_notebook_pdf, NotebookPDF
 
 # Wczytaj tematy
 topics = load_topics_from_csv("topics.csv")
 
-# Wygeneruj notatnik
+# Wygeneruj notatnik z liniami pomocniczymi
 generate_notebook_pdf(topics, "moj_notatnik.pdf")
+
+# Lub utwórz niestandardowy PDF
+pdf = NotebookPDF()
+pdf.set_topic("Mój temat")
+pdf.add_page()  # Automatycznie doda linie pomocnicze
+pdf.output("niestandardowy.pdf")
 ```
 
 ## 🏗️ Architektura kodu
@@ -88,6 +96,9 @@ generate_notebook_pdf(topics, "moj_notatnik.pdf")
 
 1. **`load_topics_from_csv()`** - Wczytuje dane z pliku CSV
 2. **`NotebookPDF`** - Klasa do generowania PDF z niestandardowymi nagłówkami/stopkami
+   - **`header()`** - Generuje nagłówek z linią oddzielającą
+   - **`footer()`** - Generuje stopkę z linią oddzielającą  
+   - **`_add_notebook_lines()`** - Dodaje regularne linie pomocnicze na stronie
 3. **`generate_notebook_pdf()`** - Główna funkcja generująca notatnik
 4. **`main()`** - Punkt wejścia programu
 
@@ -120,6 +131,15 @@ class NotebookPDF(FPDF):
     LINE_SPACING = 10
 ```
 
+### Dostosowywanie linii pomocniczych:
+
+W metodzie `_add_notebook_lines()` możesz zmienić:
+- **`line_spacing = 7`** - odstęp między liniami (domyślnie 7mm)
+- **`self.line(10, current_y, 200, current_y)`** - pozycję i długość linii
+  - `10` - margines lewy (mm)
+  - `200` - margines prawy (mm)
+  - `current_y` - pozycja Y linii
+
 ## 🐛 Rozwiązywanie problemów
 
 ### Błąd: "Nie można znaleźć pliku: topics.csv"
@@ -151,6 +171,40 @@ class NotebookPDF(FPDF):
 3. **Sprawdź wynik:**
    - Plik `notebook.pdf` zostanie utworzony
    - Każda strona będzie miała spójny nagłówek i stopkę
+   - Każda strona będzie miała linie pomocnicze do notowania
+
+## 📝 Funkcjonalności linii pomocniczych
+
+### Rodzaje linii:
+
+1. **Linia pod nagłówkiem** - oddziela tytuł tematu od treści
+2. **Linie pomocnicze** - regularne linie co 7mm na całej stronie
+3. **Linia nad stopką** - oddziela treść od stopki
+
+### Wizualizacja strony:
+
+```
+┌─────────────────────────────────────┐
+│            NAZWA TEMATU             │  ← Nagłówek
+├─────────────────────────────────────┤  ← Linia pod nagłówkiem
+│                                     │
+│ ────────────────────────────────── │  ← Linie pomocnicze
+│                                     │    (co 7mm)
+│ ────────────────────────────────── │
+│                                     │
+│ ────────────────────────────────── │
+│                                     │
+├─────────────────────────────────────┤  ← Linia nad stopką
+│            nazwa tematu             │  ← Stopka
+└─────────────────────────────────────┘
+```
+
+### Korzyści:
+
+- **Łatwiejsze notowanie** - linie wyznaczają miejsca na tekst
+- **Spójny wygląd** - wszystkie strony mają identyczny układ
+- **Profesjonalny wygląd** - przypomina zeszyt szkolny
+- **Czytelność** - linie pomagają w organizacji notatek
 
 ## 🤝 Wkład w rozwój
 
@@ -163,6 +217,20 @@ class NotebookPDF(FPDF):
 ## 📄 Licencja
 
 Ten projekt jest dostępny na licencji MIT.
+
+## 📋 Historia wersji
+
+### v2.0.0 (2025)
+- ✅ **Dodano linie pomocnicze** - regularne linie co 7mm na każdej stronie
+- ✅ **Linie oddzielające** - linie pod nagłówkiem i nad stopką  
+- ✅ **Ulepszona dokumentacja** - szczegółowe opisy nowych funkcjonalności
+- ✅ **Zachowana kompatybilność** - wszystkie istniejące funkcje działają bez zmian
+
+### v1.0.0 (2025)
+- ✅ Podstawowa funkcjonalność generowania PDF
+- ✅ Nagłówki i stopki na każdej stronie
+- ✅ Obsługa plików CSV
+- ✅ Obsługa polskich znaków
 
 ## 👨‍💻 Autor
 

@@ -83,7 +83,7 @@ class NotebookPDF(FPDF):
         Generuje nagłówek strony.
 
         Automatycznie wywoływana przez FPDF przy dodawaniu nowej strony.
-        Wyświetla nazwę tematu w nagłówku strony.
+        Wyświetla nazwę tematu w nagłówku strony i rysuje poziome linie.
         """
         # Zapisz temat w momencie renderowania nagłówka
         # to zapewnia spójność z stopką
@@ -92,21 +92,50 @@ class NotebookPDF(FPDF):
         # Ustaw czcionkę i wyświetl nagłówek
         self.set_font(*self.HEADER_FONT)
         self.cell(w=0, h=self.HEADER_HEIGHT, txt=self._page_topic, ln=True, align="C")
+
+        # Rysuj linię pod nagłówkiem
+        self.line(10, self.get_y(), 200, self.get_y())
+
         self.ln(self.LINE_SPACING)
+
+        # Dodaj dodatkowe linie pomocnicze dla notowania
+        self._add_notebook_lines()
 
     def footer(self) -> None:
         """
         Generuje stopkę strony.
 
         Automatycznie wywoływana przez FPDF przy dodawaniu nowej strony.
-        Wyświetla nazwę tematu małymi literami w stopce strony.
+        Wyświetla nazwę tematu małymi literami w stopce strony i rysuje linię.
         """
+        # Rysuj linię nad stopką
+        self.line(10, self.FOOTER_Y_POSITION - 5, 200, self.FOOTER_Y_POSITION - 5)
+
         # Ustaw pozycję i czcionkę
         self.set_y(self.FOOTER_Y_POSITION)
         self.set_font(*self.FOOTER_FONT)
 
         # Wyświetl stopkę z tematem małymi literami
         self.cell(w=0, h=self.FOOTER_HEIGHT, txt=self._page_topic.lower(), align="C")
+
+    def _add_notebook_lines(self) -> None:
+        """
+        Dodaje poziome linie pomocnicze na stronie ułatwiające notowanie.
+
+        Rysuje linie w regularnych odstępach na całej stronie.
+        """
+        # Oblicz dostępną wysokość strony (bez nagłówka i stopki)
+        page_height = 297  # A4 height in mm
+        margin_top = self.get_y()
+        margin_bottom = 20  # miejsce na stopkę
+
+        # Rysuj linie co 7mm (odpowiada standardowemu odstępowi w zeszytach)
+        line_spacing = 7
+        current_y = margin_top + line_spacing
+
+        while current_y < page_height - margin_bottom:
+            self.line(10, current_y, 200, current_y)
+            current_y += line_spacing
 
 
 def create_pages_for_topic(pdf: NotebookPDF, topic: str, page_count: int) -> None:
