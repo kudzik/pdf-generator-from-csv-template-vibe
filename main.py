@@ -1,108 +1,204 @@
-# Importowanie potrzebnych bibliotek
-import csv  # Do czytania plików CSV (Comma Separated Values)
+#!/usr/bin/env python3
+"""
+Generator notatnika PDF z tematów z pliku CSV
 
-from fpdf import FPDF  # Biblioteka do tworzenia plików PDF
+Ten skrypt generuje notatnik PDF z tematów wczytanych z pliku CSV.
+Każdy temat może mieć różną liczbę stron, a każda strona ma spójny
+nagłówek i stopkę z nazwą tematu.
+
+Autor: Artur Kud
+Data: 2025
+"""
+
+import csv
+from typing import Dict, List
+
+from fpdf import FPDF
 
 
-def load_topics(filepath):
+def load_topics_from_csv(filepath: str) -> List[Dict[str, str]]:
     """
-    Funkcja do wczytywania tematów z pliku CSV
+    Wczytuje tematy z pliku CSV.
 
     Args:
-        filepath (str): Ścieżka do pliku CSV z tematami
+        filepath: Ścieżka do pliku CSV z tematami
 
     Returns:
-        list: Lista słowników z danymi z pliku CSV
+        Lista słowników z danymi tematów (Topic, Pages)
+
+    Raises:
+        FileNotFoundError: Jeśli plik nie istnieje
+        csv.Error: Jeśli plik CSV jest uszkodzony
     """
-    # Otwieranie pliku CSV z odpowiednim kodowaniem UTF-8 (obsługuje polskie znaki)
-    with open(filepath, newline="", encoding="utf-8") as f:
-        # csv.DictReader czyta plik i zwraca każdy wiersz jako słownik
-        # list() konwertuje to na listę słowników
-        return list(csv.DictReader(f))
+    try:
+        with open(filepath, newline="", encoding="utf-8") as file:
+            reader = csv.DictReader(
+                file
+            )  # czyta plik i zwraca każdy wiersz jako słownik
+            return list(reader)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Nie można znaleźć pliku: {filepath}")
+    except Exception as e:
+        raise csv.Error(f"Błąd podczas czytania pliku CSV: {e}")
 
 
 class NotebookPDF(FPDF):
     """
-    Klasa dziedzicząca po FPDF do tworzenia notatnika PDF
-    Zawiera niestandardowe nagłówki i stopki
+    Klasa do tworzenia notatnika PDF z niestandardowymi nagłówkami i stopkami.
+
+    Dziedziczy po FPDF i dodaje funkcjonalność automatycznego
+    generowania nagłówków i stopek dla każdej strony.
     """
+
+    # Stałe konfiguracyjne
+    HEADER_FONT = ("Arial", "B", 14)
+    FOOTER_FONT = ("Arial", "I", 10)
+    HEADER_HEIGHT = 10
+    FOOTER_HEIGHT = 10
+    FOOTER_Y_POSITION = -15
+    LINE_SPACING = 10
 
     def __init__(self):
         """
-        Konstruktor klasy - wywołuje konstruktor klasy nadrzędnej
-        i inicjalizuje zmienną topic
-        """
-        super().__init__()  # Wywołanie konstruktora klasy nadrzędnej (FPDF)
-        self.topic = ""  # Zmienna do przechowywania aktualnego tematu
-        self.current_page_topic = ""  # Temat dla aktualnie renderowanej strony
-        self.page_topic = ""  # Temat zapisany w momencie renderowania strony
+        Inicjalizuje notatnik PDF.
 
-    def header(self):
+        Ustawia podstawowe parametry i inicjalizuje zmienne
+        do przechowywania informacji o aktualnym temacie.
         """
-        Metoda wywoływana automatycznie na każdej stronie
-        Tworzy nagłówek z nazwą tematu
+        super().__init__()
+        self._current_topic = ""  # aktualny temat
+        self._page_topic = ""  # temat dla aktualnej strony
+
+    def set_topic(self, topic: str) -> None:
         """
-        # KRYTYCZNE: Zapisz temat w momencie renderowania nagłówka
-        self.page_topic = self.current_page_topic
+        Ustawia temat dla aktualnej strony.
 
-        self.set_font(
-            "Arial", "B", 14
-        )  # Ustawienie czcionki Arial, pogrubionej, rozmiar 14
-        # cell() tworzy komórkę z tekstem
-        # 0 = szerokość (0 = pełna szerokość strony)
-        # 10 = wysokość
-        # ln=True = przejście do nowej linii po komórce
-        # align="C" = wyśrodkowanie tekstu
-        # Używamy page_topic, który jest zapisany w momencie renderowania
-        self.cell(0, 10, self.page_topic, ln=True, align="C")
-        self.ln(10)  # Dodanie 10 punktów odstępu
-
-    def footer(self):
+        Args:
+            topic: Nazwa tematu do wyświetlenia w nagłówku i stopce
         """
-        Metoda wywoływana automatycznie na każdej stronie
-        Tworzy stopkę z nazwą tematu (małymi literami)
+        self._current_topic = topic
+
+    def header(self) -> None:
         """
-        self.set_y(-15)  # Ustawienie pozycji Y na 15 punktów od dołu strony
-        self.set_font("Arial", "I", 10)  # Czcionka Arial, kursywa, rozmiar 10
-        # Używamy page_topic, który został zapisany w header() i nie może być zmieniony
-        self.cell(0, 10, self.page_topic.lower(), align="C")
+        Generuje nagłówek strony.
+
+        Automatycznie wywoływana przez FPDF przy dodawaniu nowej strony.
+        Wyświetla nazwę tematu w nagłówku strony.
+        """
+        # Zapisz temat w momencie renderowania nagłówka
+        # to zapewnia spójność z stopką
+        self._page_topic = self._current_topic
+
+        # Ustaw czcionkę i wyświetl nagłówek
+        self.set_font(*self.HEADER_FONT)
+        self.cell(w=0, h=self.HEADER_HEIGHT, txt=self._page_topic, ln=True, align="C")
+        self.ln(self.LINE_SPACING)
+
+    def footer(self) -> None:
+        """
+        Generuje stopkę strony.
+
+        Automatycznie wywoływana przez FPDF przy dodawaniu nowej strony.
+        Wyświetla nazwę tematu małymi literami w stopce strony.
+        """
+        # Ustaw pozycję i czcionkę
+        self.set_y(self.FOOTER_Y_POSITION)
+        self.set_font(*self.FOOTER_FONT)
+
+        # Wyświetl stopkę z tematem małymi literami
+        self.cell(w=0, h=self.FOOTER_HEIGHT, txt=self._page_topic.lower(), align="C")
 
 
-def generate_notebook(topics, output_file="notebook.pdf"):
+def create_pages_for_topic(pdf: NotebookPDF, topic: str, page_count: int) -> None:
     """
-    Funkcja do generowania notatnika PDF z listy tematów
+    Tworzy określoną liczbę stron dla danego tematu.
 
     Args:
-        topics (list): Lista słowników z danymi tematów
-        output_file (str): Nazwa pliku wyjściowego (domyślnie "notebook.pdf")
+        pdf: Instancja NotebookPDF
+        topic: Nazwa tematu
+        page_count: Liczba stron do utworzenia
     """
-    pdf = NotebookPDF()  # Tworzenie instancji naszej klasy PDF
-
-    # Iteracja przez każdy temat z listy
-    for row in topics:
-        # row["Pages"] to liczba stron dla danego tematu (konwertowana na int)
-        # range() tworzy sekwencję liczb od 0 do liczby stron
-        for _ in range(int(row["Pages"])):
-            # WAŻNE: Ustawienie tematu PRZED dodaniem strony
-            # to zapewnia, że header i footer będą miały poprawny temat
-            pdf.topic = row["Topic"]  # Ustawienie aktualnego tematu
-            pdf.current_page_topic = row[
-                "Topic"
-            ]  # Ustawienie tematu dla aktualnej strony
-            print(
-                f"Adding page for topic: {pdf.topic}"
-            )  # Informacja o dodawanej stronie
-            pdf.add_page()  # Dodanie nowej strony (automatycznie wywoła header i footer)
-
-            # KRYTYCZNE: Nie zmieniaj current_page_topic po add_page()!
-            # Pozostaw go niezmieniony do następnej iteracji
-
-    pdf.output(output_file)  # Zapisanie pliku PDF na dysk
+    for page_num in range(page_count):
+        pdf.set_topic(topic)
+        # print(f"Dodawanie strony {page_num + 1} dla tematu: {topic}")
+        pdf.add_page()
 
 
-# Sprawdzenie czy skrypt jest uruchamiany bezpośrednio (nie importowany)
+def generate_notebook_pdf(
+    topics: List[Dict[str, str]], output_file: str = "notebook.pdf"
+) -> None:
+    """
+    Generuje notatnik PDF z listy tematów.
+
+    Args:
+        topics: Lista słowników z danymi tematów
+        output_file: Nazwa pliku wyjściowego
+
+    Raises:
+        ValueError: Jeśli lista tematów jest pusta
+        KeyError: Jeśli brakuje wymaganych kluczy w danych
+    """
+    if not topics:
+        raise ValueError("Lista tematów nie może być pusta")
+
+    # Sprawdź czy wszystkie wymagane klucze są obecne
+    required_keys = ["Topic", "Pages"]
+    for i, topic_data in enumerate(topics):
+        for key in required_keys:
+            if key not in topic_data:
+                raise KeyError(f"Brakuje klucza '{key}' w temacie {i + 1}")
+
+    # Utwórz instancję PDF
+    pdf = NotebookPDF()
+
+    # Generuj strony dla każdego tematu
+    for topic_data in topics:
+        topic_name = topic_data["Topic"]
+        page_count = int(topic_data["Pages"])
+
+        create_pages_for_topic(pdf, topic_name, page_count)
+
+    # Zapisz plik PDF
+    try:
+        pdf.output(output_file)
+        print(f"Notatnik PDF został zapisany jako: {output_file}")
+    except Exception as e:
+        raise RuntimeError(f"Błąd podczas zapisywania pliku PDF: {e}")
+
+
+def main() -> None:
+    """
+    Główna funkcja programu.
+
+    Wczytuje tematy z pliku CSV i generuje notatnik PDF.
+    """
+    try:
+        # Wczytaj tematy z pliku CSV
+        print("Wczytywanie tematów z pliku CSV...")
+        topics = load_topics_from_csv("topics.csv")
+        print(f"Wczytano {len(topics)} tematów")
+
+        # Wygeneruj notatnik PDF
+        print("Generowanie notatnika PDF...")
+        generate_notebook_pdf(topics)
+
+        print("✅ Notatnik PDF został pomyślnie wygenerowany!")
+
+    except FileNotFoundError as e:
+        print(f"❌ Błąd: {e}")
+        print("Sprawdź czy plik 'topics.csv' istnieje w bieżącym katalogu.")
+
+    except csv.Error as e:
+        print(f"❌ Błąd pliku CSV: {e}")
+        print("Sprawdź format pliku CSV.")
+
+    except (ValueError, KeyError) as e:
+        print(f"❌ Błąd danych: {e}")
+        print("Sprawdź zawartość pliku CSV.")
+
+    except Exception as e:
+        print(f"❌ Nieoczekiwany błąd: {e}")
+
+
 if __name__ == "__main__":
-    # Wczytanie tematów z pliku CSV
-    topics = load_topics("topics.csv")
-    # Wygenerowanie notatnika PDF
-    generate_notebook(topics)
+    main()
